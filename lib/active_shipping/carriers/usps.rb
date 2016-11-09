@@ -28,12 +28,22 @@ module ActiveShipping
     API_CODES = {
       :us_rates => 'RateV4',
       :world_rates => 'IntlRateV2',
+      :shipment => 'DeliveryConfirmationV4',
+      :shipment_test => 'DelivConfirmCertifyV4',
       :test => 'CarrierPickupAvailability',
       :track => 'TrackV2'
     }
+
+    XML_ROOTS = {
+      :shipment => 'DeliveryConfirmationV4.0Request',
+      :shipment_test => 'DelivConfirmCertifyV4.0Request'
+    }
+
     USE_SSL = {
       :us_rates => false,
       :world_rates => false,
+      :shipment =>  true,
+      :shipment_test => true,
       :test => true,
       :track => false
     }
@@ -61,6 +71,12 @@ module ActiveShipping
       :envelope => 'Envelope'
     }
 
+    LABEL_TYPES = {
+      :pdf => 'PDF',
+      :tif => 'TIF'
+    }
+    LABEL_TYPE = LABEL_TYPES[:pdf]
+
     US_SERVICES = {
       :first_class => 'FIRST CLASS',
       :priority => 'PRIORITY',
@@ -72,6 +88,13 @@ module ActiveShipping
       :online => 'ONLINE',
       :plus => 'PLUS',
       :all => 'ALL'
+    }
+
+    SHIPMENT_SERVICES = {
+      :first_class => 'FIRST CLASS',
+      :priority => 'PRIORITY',
+      :media => 'MEDIA MAIL',
+      :library => 'LIBRARY MAIL'
     }
 
     DEFAULT_SERVICE = Hash.new(:all).update(
@@ -257,6 +280,24 @@ module ActiveShipping
       38
     end
 
+
+    def create_shipment(origin, destination, packages, options = {})
+      options = @options.merge(options)
+      packages = Array(packages)
+
+      raise ArgumentError, "Multiple packages are not supported yet." if packages.length > 1
+
+      origin = Location.from(origin)
+      destination = Location.from(destination)
+
+      action = options[:test] ? :shipment_test : :shipment
+
+      request = build_shipment_request(action, origin, destination, packages[0], options)
+      response = commit(action, request, options[:test])
+
+      parse_shipment_response(response, options)
+    end
+
     protected
 
     def build_tracking_request(tracking_number, options = {})
@@ -317,6 +358,72 @@ module ActiveShipping
       EOF
       xml = Nokogiri.XML(commit(:test, request, true)) { |config| config.strict }
       xml.at('/CarrierPickupAvailabilityResponse/City').try(:text) == 'SAN FRANCISCO' && xml.at('/CarrierPickupAvailabilityResponse/Address2').try(:text) == '18 FAIR AVE'
+    end
+
+    def build_shipment_request(action, origin, destination, package, options = {})
+      # TODO: handle international requests
+      xml_builder = Nokogiri::XML::Builder.new do |xml|
+        xml.send(XML_ROOTS[action].to_sym, 'USERID' => @options[:login]) do
+          service = SHIPMENT_SERVICES[options[:service]]
+
+          unless service
+            raise ArgumentError, "Service is not provided or not supported."
+          end
+
+          build_location_node(xml, 'From', origin)
+          build_location_node(xml, 'To', destination)
+
+          xml.WeightInOunces("%0.1f" % [package.ounces, 1].max)
+          xml.ServiceType(service)
+
+          xml.ImageType(LABEL_TYPE)
+
+          size_code = USPS.size_code_for(package)
+          container = CONTAINERS[package.options[:container]]
+          container ||= (package.cylinder? ? 'NONRECTANGULAR' : 'RECTANGULAR') if size_code == 'LARGE'
+          xml.Container(container)
+
+          xml.Size(size_code)
+        end
+      end
+
+      save_request(xml_builder.to_xml)
+    end
+
+    def build_location_node(xml, prefix, address)
+      array = [
+        ['Name', address.name],
+        ['Firm', address.company],
+        ['Address1', address.address1],
+        ['Address2', address.address2 || address.address1],
+        ['City', address.city],
+        ['State', address.state],
+        ['Zip5', strip_zip(address.zip)]
+      ]
+      array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
+
+      array.each do |key, value|
+        xml.public_send(prefix + key, value)
+      end
+    end
+
+    def parse_shipment_response(response, options = {})
+      success = true
+      message = ''
+
+      xml = Nokogiri.XML(response)
+
+      if error = xml.at_xpath('/Error | //ServiceErrors/ServiceError')
+        success = false
+        message = error.at('Description').text
+      end
+
+      labels = [Label.new(xml.at_css('DeliveryConfirmationNumber').content,
+                          Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))]
+
+      LabelResponse.new(success, message, Hash.from_xml(response),
+                        :xml => response, :request => last_request,
+                        :labels => labels, :test => options[:test])
     end
 
     # options[:service] --    One of [:first_class, :priority, :express, :bpm, :parcel,
@@ -590,7 +697,6 @@ module ActiveShipping
       end
     end
 
-
     def parse_tracking_info(response, node)
       success = !has_error?(node)
       message = response_message(node)
@@ -675,6 +781,10 @@ module ActiveShipping
 
     def strip_zip(zip)
       zip.to_s.scan(/\d{5}/).first || zip
+    end
+
+    def strip_zip4(zip)
+      zip.to_s.scan(/\d{4}/).first
     end
 
     private
