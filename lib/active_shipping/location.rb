@@ -144,5 +144,13 @@ module ActiveShipping #:nodoc:
     def ==(other)
       to_hash == other.to_hash
     end
+
+    def first_name
+      @name.split(' ').first
+    end
+
+    def last_name
+      @name.split(' ').last
+    end
   end
 end

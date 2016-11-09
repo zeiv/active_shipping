@@ -36,22 +36,28 @@ module ActiveShipping
     API_CODES = {
       :us_rates => 'RateV4',
       :world_rates => 'IntlRateV2',
-      :shipment => 'DeliveryConfirmationV4',
-      :shipment_test => 'DelivConfirmCertifyV4',
+      :us_shipment => 'DeliveryConfirmationV4',
+      :us_shipment_test => 'DelivConfirmCertifyV4',
+      :world_shipment => 'ExpressMailIntl',
+      :world_shipment_test => 'ExpressMailIntlCertify',
       :test => 'CarrierPickupAvailability',
       :track => 'TrackV2'
     }
 
     XML_ROOTS = {
-      :shipment => 'DeliveryConfirmationV4.0Request',
-      :shipment_test => 'DelivConfirmCertifyV4.0Request'
+      :us_shipment => 'DeliveryConfirmationV4.0Request',
+      :us_shipment_test => 'DelivConfirmCertifyV4.0Request',
+      :world_shipment => 'ExpressMailIntlRequest',
+      :world_shipment_test => 'ExpressMailIntlCertifyRequest'
     }
 
     USE_SSL = {
       :us_rates => false,
       :world_rates => false,
-      :shipment =>  true,
-      :shipment_test => true,
+      :us_shipment =>  true,
+      :us_shipment_test => true,
+      :world_shipment => true,
+      :world_shipment_test => true,
       :test => true,
       :track => false
     }
@@ -133,10 +139,22 @@ module ActiveShipping
       :package_service => 'PACKAGESERVICE'
     }
 
+    CONTENT_TYPES = Hash.new('MERCHANDISE').update(
+      :sample => 'SAMPLE',
+      :gift => 'GIFT',
+      :documents => 'DOCUMENTS',
+      :return => 'RETURN',
+      :humanitarian => 'HUMANITARIAN',
+      :dangerous_goods => 'DANGEROUSGOODS',
+      :cremated_remains => 'CrematedRemains',
+      :nonnegotiable_document => 'NonnegotiableDocument'
+    )
+
     ATTEMPTED_DELIVERY_CODES = %w(02 53 54 55 56 H0)
 
     # Array of U.S. possessions according to USPS: https://www.usps.com/ship/official-abbreviations.htm
     US_POSSESSIONS = %w(AS FM GU MH MP PW PR VI)
+    DOMESTIC_CODES = US_POSSESSIONS + ['US']
 
     # TODO: figure out how USPS likes to say "Ivory Coast"
     #
@@ -229,7 +247,7 @@ module ActiveShipping
     end
 
     def find_rates(origin, destination, packages, options = {})
-      validate_in_us(origin)
+      validate_in_us(origin, 'origin has to a US address')
 
       options = @options.merge(options)
 
@@ -237,8 +255,7 @@ module ActiveShipping
       destination = Location.from(destination)
       packages = Array(packages)
 
-      domestic_codes = US_POSSESSIONS + ['US', nil]
-      if domestic_codes.include?(destination.country_code(:alpha2))
+      if us_address?(destination)
         us_rates(origin, destination, packages, options)
       else
         world_rates(origin, destination, packages, options)
@@ -291,7 +308,7 @@ module ActiveShipping
     end
 
     def create_shipment(origin, destination, packages, options = {})
-      validate_in_us(origin)
+      validate_in_us(origin, 'origin has to a US address')
 
       options = @options.merge(options)
       packages = Array(packages)
@@ -301,7 +318,7 @@ module ActiveShipping
       origin = Location.from(origin)
       destination = Location.from(destination)
 
-      action = options[:test] ? :shipment_test : :shipment
+      action = shipment_action(origin, destination, options[:test])
 
       request = build_shipment_request(action, origin, destination, packages[0], options)
       response = commit(action, request, options[:test])
@@ -311,11 +328,22 @@ module ActiveShipping
 
     protected
 
-    def validate_in_us(origin)
-      domestic_codes = US_POSSESSIONS + ['US']
+    # FIXME: move to Location
+    def us_address?(location)
+      DOMESTIC_CODES.include?(location.country_code)
+    end
 
-      unless domestic_codes.include?(origin.country_code)
-        raise ArgumentError, 'the origin has to be a US address'
+    def validate_in_us(location, message = 'location not in US')
+      unless us_address?(location)
+        raise ArgumentError, message
+      end
+    end
+
+    def shipment_action(origin, destination, test = false)
+      if origin.country_code == 'US' && destination.country_code == 'US'
+        test ? :us_shipment_test : :us_shipment
+      else
+        test ? :world_shipment_test : :world_shipment
       end
     end
 
@@ -380,7 +408,14 @@ module ActiveShipping
     end
 
     def build_shipment_request(action, origin, destination, package, options = {})
-      # TODO: handle international requests
+      if us_address?(destination)
+        build_us_shipment_request(action, origin, destination, package, options)
+      else
+        build_world_shipment_request(action, origin, destination, package, options)
+      end
+    end
+
+    def build_us_shipment_request(action, origin, destination, package, options = {})
       xml_builder = Nokogiri::XML::Builder.new do |xml|
         xml.send(XML_ROOTS[action].to_sym, 'USERID' => @options[:login]) do
           service = SHIPMENT_SERVICES[options[:service]]
@@ -389,8 +424,8 @@ module ActiveShipping
             raise ArgumentError, "Service is not provided or not supported."
           end
 
-          build_location_node(xml, 'From', origin)
-          build_location_node(xml, 'To', destination)
+          build_us_location_node(xml, 'From', origin)
+          build_us_location_node(xml, 'To', destination)
 
           xml.WeightInOunces("%0.1f" % [package.ounces, 1].max)
           xml.ServiceType(service)
@@ -409,7 +444,7 @@ module ActiveShipping
       save_request(xml_builder.to_xml)
     end
 
-    def build_location_node(xml, prefix, address)
+    def build_us_location_node(xml, prefix, address)
       array = [
         ['Name', address.name],
         ['Firm', address.company],
@@ -426,6 +461,83 @@ module ActiveShipping
       end
     end
 
+    def build_world_shipment_request(action, origin, destination, package, options = {})
+      xml_builder = Nokogiri::XML::Builder.new do |xml|
+        xml.send(XML_ROOTS[action].to_sym, 'USERID' => @options[:login]) do
+          xml.Revision('2')
+          service = SHIPMENT_SERVICES[options[:service]]
+
+          unless service
+            raise ArgumentError, "Service is not provided or not supported."
+          end
+
+          build_world_location_node(xml, 'From', origin)
+          build_world_location_node(xml, 'To', destination)
+
+          size_code = USPS.size_code_for(package)
+          container = CONTAINERS[package.options[:container]]
+          container ||= (package.cylinder? ? 'NONRECTANGULAR' : 'RECTANGULAR') if size_code == 'LARGE'
+          xml.Container(container)
+
+          xml.ShippingContents do |xml|
+            xml.ItemDetail do |xml|
+              xml.Description("Item delivery")
+              xml.Quantity(1)
+              xml.Value(package.value)
+              xml.NetPounds(package.pounds.to_i)
+              xml.NetOunces("%0.1f" % [package.ounces, 1].max)
+              xml.HSTariffNumber(0)
+              xml.CountryOfOrigin('United States')
+            end
+          end
+
+          xml.GrossPounds([package.pounds.to_i, 1].max)
+          xml.GrossOunces(package.ounces.to_i)
+          xml.ContentType(CONTENT_TYPES[package.options[:content_type]])
+          xml.Agreement('Y')
+          xml.ImageType(LABEL_TYPE)
+
+          xml.Size(size_code)
+
+          xml.Length(package.dimensions[0].to_f)
+          xml.Width(package.dimensions[1].to_f)
+          xml.Height(package.dimensions[2].to_f)
+        end
+      end
+
+      save_request(xml_builder.to_xml)
+    end
+
+    def build_world_location_node(xml, prefix, address)
+      array = [
+        ['FirstName', address.first_name],
+        ['LastName', address.last_name],
+        ['Firm', address.company],
+        ['Address1', address.address1],
+        ['Address2', address.address2 || address.address1],
+        ['City', address.city],
+      ]
+
+      unless us_address?(address)
+        array << ['Country', address.country]
+        array << ['PostalCode', address.zip]
+        array << ['POBoxFlag', address.po_box? ? 'Y' : 'N']
+      end
+
+      if us_address?(address)
+        array << ['State', address.state]
+        array << ['Zip5', strip_zip(address.zip)]
+        array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
+      end
+
+      array << ['Phone', address.phone]
+
+      array.each do |key, value|
+        xml.public_send(prefix + key, value)
+      end
+    end
+
+
     def parse_shipment_response(response, options = {})
       success = true
       message = ''
@@ -439,8 +551,16 @@ module ActiveShipping
       end
 
       unless error
-        labels << Label.new(xml.at_css('DeliveryConfirmationNumber').content,
-                            Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))
+        international_response = xml.at_css('ExpressMailIntlResponse').present?
+
+        if international_response
+          # FIXME: more labels are present here, extract them all
+          labels << Label.new(xml.at_css('BarcodeNumber').content,
+                              Base64.decode64(xml.at_css('LabelImage').content))
+        else
+          labels << Label.new(xml.at_css('DeliveryConfirmationNumber').content,
+                              Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))
+        end
       end
 
       LabelResponse.new(success, message, Hash.from_xml(response),
