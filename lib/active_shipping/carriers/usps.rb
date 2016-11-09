@@ -17,12 +17,20 @@ module ActiveShipping
     cattr_reader :name
     @@name = "USPS"
 
-    LIVE_DOMAIN = 'production.shippingapis.com'
-    LIVE_RESOURCE = 'ShippingAPI.dll'
+    RATES_DOMAIN = 'production.shippingapis.com'
+    TEST_RATES_DOMAIN = 'stg-production.shippingapis.com'
+    LABELS_DOMAIN = 'secure.shippingapis.com'
+    RESOURCE = 'ShippingAPI.dll'
 
-    TEST_DOMAINS = { # indexed by security; e.g. TEST_DOMAINS[USE_SSL[:rates]]
-      true => 'secure.shippingapis.com',
-      false => 'stg-production.shippingapis.com'
+    DOMAINS = {
+      :us_rates => { live: RATES_DOMAIN, test: TEST_RATES_DOMAIN },
+      :world_rates => { live: RATES_DOMAIN, test: TEST_RATES_DOMAIN },
+      :us_shipment => { live: LABELS_DOMAIN, test: LABELS_DOMAIN },
+      :us_shipment_test => { live: LABELS_DOMAIN, test: LABELS_DOMAIN },
+      :world_shipment => { live: LABELS_DOMAIN, test: LABELS_DOMAIN },
+      :world_shipment_test => { live: LABELS_DOMAIN, test: LABELS_DOMAIN },
+      :test => { live: LABELS_DOMAIN, test: LABELS_DOMAIN },
+      :track => { live: RATES_DOMAIN, test: TEST_RATES_DOMAIN }
     }
 
     API_CODES = {
@@ -775,8 +783,8 @@ module ActiveShipping
 
     def request_url(action, request, test)
       scheme = USE_SSL[action] ? 'https://' : 'http://'
-      host = test ? TEST_DOMAINS[USE_SSL[action]] : LIVE_DOMAIN
-      "#{scheme}#{host}/#{LIVE_RESOURCE}?API=#{API_CODES[action]}&XML=#{URI.encode(request)}"
+      host = DOMAINS[action][test ? :test : :live]
+      "#{scheme}#{host}/#{RESOURCE}?API=#{API_CODES[action]}&XML=#{URI.encode(request)}"
     end
 
     def strip_zip(zip)
