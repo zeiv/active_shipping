@@ -418,6 +418,7 @@ module ActiveShipping
     def parse_shipment_response(response, options = {})
       success = true
       message = ''
+      labels = []
 
       xml = Nokogiri.XML(response)
 
@@ -426,8 +427,10 @@ module ActiveShipping
         message = error.at('Description').text
       end
 
-      labels = [Label.new(xml.at_css('DeliveryConfirmationNumber').content,
-                          Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))]
+      unless error
+        labels << Label.new(xml.at_css('DeliveryConfirmationNumber').content,
+                            Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))
+      end
 
       LabelResponse.new(success, message, Hash.from_xml(response),
                         :xml => response, :request => last_request,
