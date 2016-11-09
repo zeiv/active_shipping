@@ -229,6 +229,8 @@ module ActiveShipping
     end
 
     def find_rates(origin, destination, packages, options = {})
+      validate_in_us(origin)
+
       options = @options.merge(options)
 
       origin = Location.from(origin)
@@ -288,8 +290,9 @@ module ActiveShipping
       38
     end
 
-
     def create_shipment(origin, destination, packages, options = {})
+      validate_in_us(origin)
+
       options = @options.merge(options)
       packages = Array(packages)
 
@@ -307,6 +310,14 @@ module ActiveShipping
     end
 
     protected
+
+    def validate_in_us(origin)
+      domestic_codes = US_POSSESSIONS + ['US']
+
+      unless domestic_codes.include?(origin.country_code)
+        raise ArgumentError, 'the origin has to be a US address'
+      end
+    end
 
     def build_tracking_request(tracking_number, options = {})
       build_tracking_batch_request([{

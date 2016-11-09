@@ -585,6 +585,26 @@ class USPSTest < Minitest::Test
     assert_equal 38, @carrier.maximum_address_field_length
   end
 
+  def test_international_origin_for_find_rates
+    assert_raises(ArgumentError, 'the origin has to be a US address') do
+      @carrier.find_rates(
+        location_fixtures[:ottawa],
+        location_fixtures[:new_york],
+        Package.new(0, 0),
+      )
+    end
+  end
+
+  def test_international_origin_for_create_shipment
+    assert_raises(ArgumentError, 'the origin has to be a US address') do
+      @carrier.create_shipment(
+        location_fixtures[:ottawa],
+        location_fixtures[:new_york],
+        Package.new(0, 0),
+      )
+    end
+  end
+
   private
 
   def build_service_node(options = {})
