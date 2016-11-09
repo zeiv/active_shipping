@@ -61,22 +61,6 @@ module ActiveShipping
       :envelope => 'Envelope'
     }
 
-    PACKAGE_PROPERTIES = {
-      'ZipOrigination' => :origin_zip,
-      'ZipDestination' => :destination_zip,
-      'Pounds' => :pounds,
-      'Ounces' => :ounces,
-      'Container' => :container,
-      'Size' => :size,
-      'Machinable' => :machinable,
-      'Zone' => :zone,
-      'Postage' => :postage,
-      'Restrictions' => :restrictions
-    }
-    POSTAGE_PROPERTIES = {
-      'MailService' => :service,
-      'Rate' => :rate
-    }
     US_SERVICES = {
       :first_class => 'FIRST CLASS',
       :priority => 'PRIORITY',
@@ -89,22 +73,27 @@ module ActiveShipping
       :plus => 'PLUS',
       :all => 'ALL'
     }
+
     DEFAULT_SERVICE = Hash.new(:all).update(
       :base => :online,
       :plus => :plus
     )
+
     DOMESTIC_RATE_FIELD = Hash.new('Rate').update(
       :base => 'CommercialRate',
       :plus => 'CommercialPlusRate'
     )
+
     INTERNATIONAL_RATE_FIELD = Hash.new('Postage').update(
       :base => 'CommercialPostage',
       :plus => 'CommercialPlusPostage'
     )
+
     COMMERCIAL_FLAG_NAME = {
       :base => 'CommercialFlag',
       :plus => 'CommercialPlusFlag'
     }
+
     FIRST_CLASS_MAIL_TYPES = {
       :letter => 'LETTER',
       :flat => 'FLAT',
@@ -160,12 +149,6 @@ module ActiveShipping
       'MICRONESIA FEDERATED STATES OF' => 'FM',
       'MOLDOVA REPUBLIC OF' => 'MD',
     }
-
-    RESPONSE_ERROR_MESSAGES = [
-      /There is no record of that mail item/,
-      /This Information has not been included in this Test Server\./,
-      /Delivery status information is not available/
-    ]
 
     ESCAPING_AND_SYMBOLS = /&lt;\S*&gt;/
     LEADING_USPS = /^USPS /
