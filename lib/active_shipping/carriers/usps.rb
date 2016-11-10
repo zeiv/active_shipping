@@ -341,7 +341,7 @@ module ActiveShipping
     end
 
     def shipment_action(origin, destination, test = false)
-      if origin.country_code == 'US' && destination.country_code == 'US'
+      if us_address?(destination)
         test ? :us_shipment_test : :us_shipment
       else
         test ? :world_shipment_test : :world_shipment
