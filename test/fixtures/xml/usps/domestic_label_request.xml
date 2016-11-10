@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<DelivConfirmCertifyV4.0Request USERID="login">
+  <FromName>Bob Bobsen</FromName>
+  <FromFirm/>
+  <FromAddress1>780 3rd Avenue</FromAddress1>
+  <FromAddress2>Suite  2601</FromAddress2>
+  <FromCity>New York</FromCity>
+  <FromState>NY</FromState>
+  <FromZip5>10017</FromZip5>
+  <FromZip4>1001</FromZip4>
+  <ToName>JP Silvashy</ToName>
+  <ToFirm/>
+  <ToAddress1>455 N. Rexford Dr.</ToAddress1>
+  <ToAddress2>3rd Floor</ToAddress2>
+  <ToCity>Beverly Hills</ToCity>
+  <ToState>CA</ToState>
+  <ToZip5>90210</ToZip5>
+  <ToZip4>9021</ToZip4>
+  <WeightInOunces>8.8</WeightInOunces>
+  <ServiceType>FIRST CLASS</ServiceType>
+  <ImageType>PDF</ImageType>
+  <Container/>
+  <Size>REGULAR</Size>
+</DelivConfirmCertifyV4.0Request>

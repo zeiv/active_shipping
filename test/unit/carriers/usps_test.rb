@@ -386,6 +386,14 @@ class USPSTest < Minitest::Test
     assert request =~ /\>12345\</
   end
 
+  def test_strip_phone
+    assert_equal "1234567890", @carrier.send(:strip_phone, "0-1234-567-890")
+  end
+
+  def test_strip_zip4
+    assert_equal "1234", @carrier.send(:strip_zip4, "12345")
+  end
+
   def test_maximum_weight
     assert Package.new(70 * 16, [5, 5, 5], :units => :imperial).mass == @carrier.maximum_weight
     assert Package.new((70 * 16) + 0.01, [5, 5, 5], :units => :imperial).mass > @carrier.maximum_weight
@@ -603,6 +611,110 @@ class USPSTest < Minitest::Test
         Package.new(0, 0),
       )
     end
+  end
+
+  def test_multiple_packages_for_create_shipment
+    assert_raises(ArgumentError, 'Multiple packages are not supported yet.') do
+      @carrier.create_shipment(
+        location_fixtures[:beverly_hills],
+        location_fixtures[:new_york],
+        package_fixtures.values_at(:book, :american_wii),
+        :test => true,
+      )
+    end
+  end
+
+  def test_missing_service_for_create_shipment
+    assert_raises(ArgumentError, 'Service is not provided or not supported.') do
+      @carrier.create_shipment(
+        location_fixtures[:beverly_hills],
+        location_fixtures[:new_york],
+        package_fixtures.values_at(:book),
+        :test => true,
+      )
+    end
+  end
+
+  def test_invalid_service_for_create_shipment
+    assert_raises(ArgumentError, 'Service is not provided or not supported.') do
+      @carrier.create_shipment(
+        location_fixtures[:beverly_hills],
+        location_fixtures[:new_york],
+        package_fixtures.values_at(:book),
+        :service => :invalid,
+        :test => true,
+      )
+    end
+  end
+
+  def test_shipment_action
+    assert_equal :us_shipment_test, @carrier.send(:shipment_action,
+                                                  location_fixtures[:beverly_hills],
+                                                  location_fixtures[:new_york],
+                                                  true)
+
+    assert_equal :us_shipment, @carrier.send(:shipment_action,
+                                             location_fixtures[:beverly_hills],
+                                             location_fixtures[:new_york])
+
+    assert_equal :world_shipment_test, @carrier.send(:shipment_action,
+                                                     location_fixtures[:beverly_hills],
+                                                     location_fixtures[:ottawa],
+                                                     true)
+
+    assert_equal :world_shipment, @carrier.send(:shipment_action,
+                                                location_fixtures[:beverly_hills],
+                                                location_fixtures[:ottawa])
+  end
+
+  def test_domestic_labels
+    @carrier.expects(:commit).
+      with(anything, xml_fixture('usps/domestic_label_request'), true).
+      returns(xml_fixture('usps/domestic_label_response'))
+
+    response = @carrier.create_shipment(
+      location_fixtures[:new_york_with_name],
+      location_fixtures[:beverly_hills_with_name],
+      package_fixtures.values_at(:book),
+      :service => :first_class,
+      :test => true,
+    )
+
+    assert response.success?, response.message
+    assert_instance_of Hash, response.params
+    assert_instance_of String, response.xml
+    assert_instance_of Array, response.labels
+    refute response.labels.empty?
+
+    assert_equal "420902109400101699320000720205",
+      response.labels.first.tracking_number
+    assert_equal 1, response.labels.count
+    refute response.labels.first.img_data.empty?
+  end
+
+  def test_international_labels
+    @carrier.expects(:commit).
+      with(:world_shipment_test, xml_fixture('usps/international_label_request'), true).
+      returns(xml_fixture('usps/international_label_response'))
+
+    response = @carrier.create_shipment(
+      location_fixtures[:beverly_hills_with_name],
+      location_fixtures[:ottawa_with_name],
+      package_fixtures.values_at(:wii),
+      :service => :first_class,
+      :test => true
+    )
+
+    assert response.success?, response.message
+    assert_instance_of Hash, response.params
+    assert_instance_of String, response.xml
+    assert_instance_of Array, response.labels
+    refute response.labels.empty?
+
+    assert_equal "EC505942340US", response.labels.first.tracking_number
+    assert_equal 2, response.labels.count
+    refute response.labels.first.img_data.empty?
+    refute response.labels.last.img_data.empty?
   end
 
   private

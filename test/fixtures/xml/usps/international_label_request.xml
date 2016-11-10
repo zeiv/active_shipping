@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+<ExpressMailIntlCertifyRequest USERID="login">
+  <Revision>2</Revision>
+  <FromFirstName>JP</FromFirstName>
+  <FromLastName>Silvashy</FromLastName>
+  <FromFirm/>
+  <FromAddress1>455 N. Rexford Dr.</FromAddress1>
+  <FromAddress2>3rd Floor</FromAddress2>
+  <FromCity>Beverly Hills</FromCity>
+  <FromState>CA</FromState>
+  <FromZip5>90210</FromZip5>
+  <FromZip4>9021</FromZip4>
+  <FromPhone>3102851013</FromPhone>
+  <ToFirstName>Paul</ToFirstName>
+  <ToLastName>Ottawa</ToLastName>
+  <ToFirm/>
+  <ToAddress1>110 Laurier Avenue West</ToAddress1>
+  <ToAddress2>110 Laurier Avenue West</ToAddress2>
+  <ToCity>Ottawa</ToCity>
+  <ToCountry>Canada</ToCountry>
+  <ToPostalCode>K1P 1J1</ToPostalCode>
+  <ToPOBoxFlag>N</ToPOBoxFlag>
+  <ToPhone>6135802400</ToPhone>
+  <Container>RECTANGULAR</Container>
+  <ShippingContents>
+    <ItemDetail>
+      <Description>Item delivery</Description>
+      <Quantity>1</Quantity>
+      <Value>26999</Value>
+      <NetPounds>7</NetPounds>
+      <NetOunces>120.0</NetOunces>
+      <HSTariffNumber>0</HSTariffNumber>
+      <CountryOfOrigin>United States</CountryOfOrigin>
+    </ItemDetail>
+  </ShippingContents>
+  <GrossPounds>7</GrossPounds>
+  <GrossOunces>120</GrossOunces>
+  <ContentType>MERCHANDISE</ContentType>
+  <Agreement>Y</Agreement>
+  <ImageType>PDF</ImageType>
+  <Size>LARGE</Size>
+  <Length>4.5</Length>
+  <Width>10.0</Width>
+  <Height>15.0</Height>
+</ExpressMailIntlCertifyRequest>

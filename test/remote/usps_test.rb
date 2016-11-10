@@ -125,6 +125,70 @@ class RemoteUSPSTest < Minitest::Test
     assert_equal [], other_than_two, "Some RateEstimates do not refer to the right number of packages (#{other_than_two.inspect})"
   end
 
+  def test_domestic_label_from_name_errros
+    assert_raises(ResponseError, "From Name is required and may not exceed 100 characters.") do
+      @carrier.create_shipment(
+        location_fixtures[:new_york],
+        location_fixtures[:beverly_hills_with_name],
+        package_fixtures.values_at(:book),
+        :test => true,
+        :service => :first_class
+      )
+    end
+  end
+
+  def test_domestic_label_to_name_errors
+    assert_raises(ResponseError, "To Name is required and may not exceed 100 characters.") do
+      @carrier.create_shipment(
+        location_fixtures[:new_york_with_name],
+        location_fixtures[:beverly_hills],
+        package_fixtures.values_at(:book),
+        :test => true,
+        :service => :first_class
+      )
+    end
+  end
+
+  def test_domestic_label
+    response = @carrier.create_shipment(
+      location_fixtures[:new_york_with_name],
+      location_fixtures[:beverly_hills_with_name],
+      package_fixtures.values_at(:book),
+      :test => true,
+      :service => :first_class
+    )
+
+    assert response.success?, response.message
+
+    assert_instance_of ActiveShipping::LabelResponse, response
+  end
+
+  def test_international_label
+    response = @carrier.create_shipment(
+      location_fixtures[:beverly_hills_with_name],
+      location_fixtures[:ottawa_with_name],
+      package_fixtures.values_at(:wii),
+      :service => :first_class,
+      :test => true
+    )
+
+    assert response.success?, response.message
+
+    assert_instance_of ActiveShipping::LabelResponse, response
+  end
+
+  def test_international_label_without_value_raises_errors
+    assert_raises(ResponseError, "Each Shipping item must have description, quantity, and value.") do
+      @carrier.create_shipment(
+        location_fixtures[:beverly_hills_with_name],
+        location_fixtures[:ottawa_with_name],
+        package_fixtures.values_at(:book), # book doesn't have a value
+        :service => :first_class,
+        :test => true
+      )
+    end
+  end
+
   def test_us_to_us_possession
     response = @carrier.find_rates(
       location_fixtures[:beverly_hills],
