@@ -224,6 +224,39 @@ module ActiveShipping
               end
             end
 
+            xml.CustomsClearanceDetail do |xml|
+              xml.DutiesPayment do |xml|
+                xml.PaymentType('SENDER')
+                xml.Payor do
+                  build_shipment_responsible_party_node(xml, options[:shipper] || origin)
+                end
+              end
+              xml.CustomsValue do |xml|
+                xml.Currency(packages.first.currency || "USD")
+                xml.Amount(packages.sum {|p| p.value})
+              end
+
+              xml.Commodities do |xml|
+                packages.each do |package|
+                  xml.Name(package.try(:name) || "Item Name")
+                  xml.NumberOfPieces(package.try(:quantity) || 1)
+                  xml.Description(package.try(:description) || "Item Description")
+                  xml.CountryOfManufacture(origin.country_code)
+                  build_package_weight_node(xml, package, imperial)
+                  xml.Quantity(package.try(:quantity) || 1)
+                  xml.QuantityUnits("PCS")
+                  xml.UnitPrice do |xml|
+                    xml.Currency(package.currency || "USD")
+                    xml.Amount(package.value)
+                  end
+                  xml.CustomsValue do |xml|
+                    xml.Currency(package.currency || "USD")
+                    xml.Amount(package.value)
+                  end
+                end
+              end
+            end
+
             xml.LabelSpecification do
               xml.LabelFormatType('COMMON2D')
               xml.ImageType(options[:label_format] || 'PNG')
