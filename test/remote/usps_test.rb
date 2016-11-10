@@ -198,7 +198,7 @@ class RemoteUSPSTest < Minitest::Test
 
         :test => true,
         :service => :first_class,
-        :first_class_mail_tpe => :invalid
+        :first_class_mail_type => :invalid
       )
     end
   end
