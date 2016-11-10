@@ -551,7 +551,8 @@ module ActiveShipping
       end
 
       unless error
-        international_response = xml.at_css('ExpressMailIntlResponse').present?
+        international_response = xml.at_css('ExpressMailIntlResponse').present? ||
+          xml.at_css('ExpressMailIntlCertifyResponse').present?
 
         if international_response
           xml.search("*").select do |element|
