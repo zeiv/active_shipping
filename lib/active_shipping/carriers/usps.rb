@@ -154,7 +154,7 @@ module ActiveShipping
 
     # Array of U.S. possessions according to USPS: https://www.usps.com/ship/official-abbreviations.htm
     US_POSSESSIONS = %w(AS FM GU MH MP PW PR VI)
-    DOMESTIC_CODES = US_POSSESSIONS + ['US']
+    DOMESTIC_CODES = US_POSSESSIONS + ['US', nil]
 
     # TODO: figure out how USPS likes to say "Ivory Coast"
     #
