@@ -554,9 +554,13 @@ module ActiveShipping
         international_response = xml.at_css('ExpressMailIntlResponse').present?
 
         if international_response
-          # FIXME: more labels are present here, extract them all
-          labels << Label.new(xml.at_css('BarcodeNumber').content,
-                              Base64.decode64(xml.at_css('LabelImage').content))
+          xml.search("*").select do |element|
+            # select all elements with "Image" in their name
+            element.name =~ /Image/ && element.content.present? 
+          end.each do |element|
+            labels << Label.new(xml.at_css('BarcodeNumber').content,
+                                Base64.decode64(element.content))
+          end
         else
           labels << Label.new(xml.at_css('DeliveryConfirmationNumber').content,
                               Base64.decode64(xml.at_css('DeliveryConfirmationLabel').content))
