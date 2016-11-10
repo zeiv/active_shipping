@@ -17,6 +17,7 @@ module ActiveShipping
     cattr_reader :name
     @@name = "USPS"
 
+    WORLD_SHIPMENT_API_REVISION = '2'
     RATES_DOMAIN = 'production.shippingapis.com'
     TEST_RATES_DOMAIN = 'stg-production.shippingapis.com'
     LABELS_DOMAIN = 'secure.shippingapis.com'
@@ -464,7 +465,7 @@ module ActiveShipping
     def build_world_shipment_request(action, origin, destination, package, options = {})
       xml_builder = Nokogiri::XML::Builder.new do |xml|
         xml.send(XML_ROOTS[action].to_sym, 'USERID' => @options[:login]) do
-          xml.Revision('2')
+          xml.Revision(WORLD_SHIPMENT_API_REVISION)
           service = SHIPMENT_SERVICES[options[:service]]
 
           unless service
