@@ -530,13 +530,12 @@ module ActiveShipping
         array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
       end
 
-      array << ['Phone', address.phone]
+      array << ['Phone', strip_phone(address.phone)]
 
       array.each do |key, value|
         xml.public_send(prefix + key, value)
       end
     end
-
 
     def parse_shipment_response(response, options = {})
       success = true
@@ -931,6 +930,12 @@ module ActiveShipping
 
     def strip_zip4(zip)
       zip.to_s.scan(/\d{4}/).first
+    end
+
+    def strip_phone(phone)
+      # international API requires phone to be 10 digits
+      # so return last 10 digits from the phone number
+      phone.gsub('-', '').scan(/\d{10}$/).first
     end
 
     private
