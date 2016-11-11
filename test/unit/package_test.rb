@@ -22,7 +22,7 @@ class PackageTest < Minitest::Test
   end
 
   def test_accessors
-    # :wii => Package.new((7.5 * 16), [15, 10, 4.5], :units => :imperial, :value => 269.99, :currency => 'GBP')
+    # :wii => Package.new((7.5 * 16), [15, 10, 4.5], :name => 'Wii', :description => 'Nintendo Wii', :units => :imperial, :value => 269.99, :currency => 'GBP')
     wii = package_fixtures[:wii]
     [:x, :max, :long, :length].each do |sym|
       assert_equal 15, wii.inches(sym)
@@ -59,6 +59,9 @@ class PackageTest < Minitest::Test
 
     assert_equal 'GBP', wii.currency
     assert_equal 26999, wii.value
+
+    assert_equal 'Wii', wii.name
+    assert_equal 'Nintendo Wii', wii.description
   end
 
   def test_package_from_mass

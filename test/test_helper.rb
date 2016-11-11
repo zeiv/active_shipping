@@ -77,7 +77,7 @@ module ActiveShipping::Test
         :all_imperial => Package.new(16, [1, 8, 12], :units => :imperial),
         :all_metric => Package.new(1000, [2, 20, 40]),
         :book => Package.new(250, [14, 19, 2]),
-        :wii => Package.new((7.5 * 16), [15, 10, 4.5], :units => :imperial, :value => 269.99, :currency => 'GBP'),
+        :wii => Package.new((7.5 * 16), [15, 10, 4.5], :name => 'Wii', :description => 'Nintendo Wii', :units => :imperial, :value => 269.99, :currency => 'GBP'),
         :american_wii => Package.new((7.5 * 16), [15, 10, 4.5], :units => :imperial, :value => 269.99, :currency => 'USD'),
         :new_zealand_wii => Package.new((7.5 * 16), [15, 10, 4.5], :units => :imperial, :value => 269.99, :currency => 'NZD'),
         :worthless_wii => Package.new((7.5 * 16), [15, 10, 4.5], :units => :imperial, :value => 0.0, :currency => 'USD'),
