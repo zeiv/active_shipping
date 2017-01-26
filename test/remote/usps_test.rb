@@ -138,7 +138,7 @@ class RemoteUSPSTest < Minitest::Test
   end
 
   def test_domestic_label_to_name_errors
-    assert_raises(ResponseError, "To Name is required and may not exceed 100 characters.") do
+    exception = assert_raises(ResponseError) do
       @carrier.create_shipment(
         location_fixtures[:new_york_with_name],
         location_fixtures[:beverly_hills],
@@ -147,6 +147,9 @@ class RemoteUSPSTest < Minitest::Test
         :service => :first_class
       )
     end
+
+    assert_equal "Invalid value specified for To Name." +
+    " The ToName is required and may not exceed 100 characters.", exception.message
   end
 
   def test_domestic_label
