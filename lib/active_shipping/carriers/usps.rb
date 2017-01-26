@@ -248,7 +248,7 @@ module ActiveShipping
     end
 
     def find_rates(origin, destination, packages, options = {})
-      validate_in_us(origin, 'origin has to a US address')
+      validate_in_us(origin, 'origin has to be a US address')
 
       options = @options.merge(options)
 
