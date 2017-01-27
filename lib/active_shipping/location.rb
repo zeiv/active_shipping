@@ -2,6 +2,9 @@ module ActiveShipping #:nodoc:
   class Location
     ADDRESS_TYPES = %w(residential commercial po_box)
 
+    US_POSSESSIONS = %w(AS FM GU MH MP PW PR VI)
+    DOMESTIC_CODES = US_POSSESSIONS + ['US', nil]
+
     attr_reader :options,
                 :country,
                 :postal_code,
@@ -151,6 +154,10 @@ module ActiveShipping #:nodoc:
 
     def last_name
       @name.split(' ').last
+    end
+
+    def domestic?
+      DOMESTIC_CODES.include?(country_code)
     end
   end
 end

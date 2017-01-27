@@ -154,8 +154,6 @@ module ActiveShipping
     ATTEMPTED_DELIVERY_CODES = %w(02 53 54 55 56 H0)
 
     # Array of U.S. possessions according to USPS: https://www.usps.com/ship/official-abbreviations.htm
-    US_POSSESSIONS = %w(AS FM GU MH MP PW PR VI)
-    DOMESTIC_CODES = US_POSSESSIONS + ['US', nil]
 
     # TODO: figure out how USPS likes to say "Ivory Coast"
     #
@@ -256,7 +254,7 @@ module ActiveShipping
       destination = Location.from(destination)
       packages = Array(packages)
 
-      if us_address?(destination)
+      if destination.domestic?
         us_rates(origin, destination, packages, options)
       else
         world_rates(origin, destination, packages, options)
@@ -309,7 +307,7 @@ module ActiveShipping
     end
 
     def create_shipment(origin, destination, packages, options = {})
-      validate_in_us(origin, 'origin has to a US address')
+      validate_in_us(origin, 'origin has to be a US address')
 
       options = @options.merge(options)
       packages = Array(packages)
@@ -329,19 +327,14 @@ module ActiveShipping
 
     protected
 
-    # FIXME: move to Location
-    def us_address?(location)
-      DOMESTIC_CODES.include?(location.country_code)
-    end
-
     def validate_in_us(location, message = 'location not in US')
-      unless us_address?(location)
+      unless location.domestic?
         raise ArgumentError, message
       end
     end
 
     def shipment_action(origin, destination, test = false)
-      if us_address?(destination)
+      if destination.domestic?
         test ? :us_shipment_test : :us_shipment
       else
         test ? :world_shipment_test : :world_shipment
@@ -409,7 +402,7 @@ module ActiveShipping
     end
 
     def build_shipment_request(action, origin, destination, package, options = {})
-      if us_address?(destination)
+      if destination.domestic?
         build_us_shipment_request(action, origin, destination, package, options)
       else
         build_world_shipment_request(action, origin, destination, package, options)
@@ -519,13 +512,13 @@ module ActiveShipping
         ['City', address.city],
       ]
 
-      unless us_address?(address)
+      unless address.domestic?
         array << ['Country', address.country]
         array << ['PostalCode', address.zip]
         array << ['POBoxFlag', address.po_box? ? 'Y' : 'N']
       end
 
-      if us_address?(address)
+      if address.domestic?
         array << ['State', address.state]
         array << ['Zip5', strip_zip(address.zip)]
         array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
