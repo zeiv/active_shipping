@@ -459,11 +459,6 @@ module ActiveShipping
       xml_builder = Nokogiri::XML::Builder.new do |xml|
         xml.send(XML_ROOTS[action].to_sym, 'USERID' => @options[:login]) do
           xml.Revision(WORLD_SHIPMENT_API_REVISION)
-          service = SHIPMENT_SERVICES[options[:service]]
-
-          unless service
-            raise ArgumentError, "Service is not provided or not supported."
-          end
 
           build_world_location_node(xml, 'From', origin)
           build_world_location_node(xml, 'To', destination)
@@ -478,24 +473,25 @@ module ActiveShipping
               xml.Description("Item delivery")
               xml.Quantity(1)
               xml.Value(package.value)
-              xml.NetPounds(package.pounds.to_i)
+              xml.NetPounds(0)
               xml.NetOunces("%0.1f" % [package.ounces, 1].max)
               xml.HSTariffNumber(0)
               xml.CountryOfOrigin('United States')
             end
           end
 
-          xml.GrossPounds([package.pounds.to_i, 1].max)
-          xml.GrossOunces(package.ounces.to_i)
+          xml.GrossPounds(0)
+          xml.GrossOunces([package.ounces, 1].max.ceil)
           xml.ContentType(CONTENT_TYPES[package.options[:content_type]])
           xml.Agreement('Y')
           xml.ImageType(LABEL_TYPE)
 
           xml.Size(size_code)
 
-          xml.Length(package.dimensions[0].to_f)
-          xml.Width(package.dimensions[1].to_f)
-          xml.Height(package.dimensions[2].to_f)
+          xml.Length("%0.2f" % [package.inches(:length), 0.01].max)
+          xml.Width("%0.2f" % [package.inches(:width), 0.01].max)
+          xml.Height("%0.2f" % [package.inches(:height), 0.01].max)
+          xml.Girth("%0.2f" % [package.inches(:girth), 0.01].max)
         end
       end
 
