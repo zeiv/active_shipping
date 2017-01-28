@@ -439,18 +439,18 @@ module ActiveShipping
     end
 
     def build_us_location_node(xml, prefix, address)
-      array = [
-        ['Name', address.name],
-        ['Firm', address.company],
-        ['Address1', address.address1],
-        ['Address2', address.address2 || address.address1],
-        ['City', address.city],
-        ['State', address.state],
-        ['Zip5', strip_zip(address.zip)]
-      ]
-      array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
+      location = {
+        'Name'     => address.name,
+        'Firm'     => address.company,
+        'Address1' => address.address1,
+        'Address2' => address.address2 || address.address1,
+        'City'     => address.city,
+        'State'    => address.state,
+        'Zip5'     => strip_zip(address.zip)
+      }
+      location['Zip4'] = strip_zip4(address.zip) if strip_zip4(address.zip)
 
-      array.each do |key, value|
+      location.each do |key, value|
         xml.public_send(prefix + key, value)
       end
     end
@@ -503,30 +503,30 @@ module ActiveShipping
     end
 
     def build_world_location_node(xml, prefix, address)
-      array = [
-        ['FirstName', address.first_name],
-        ['LastName', address.last_name],
-        ['Firm', address.company],
-        ['Address1', address.address1],
-        ['Address2', address.address2 || address.address1],
-        ['City', address.city],
-      ]
+      location = {
+        'FirstName' => address.first_name,
+        'LastName'  => address.last_name,
+        'Firm'      => address.company,
+        'Address1'  => address.address1,
+        'Address2'  => address.address2 || address.address1,
+        'City'      => address.city,
+      }
 
       unless address.domestic?
-        array << ['Country', address.country]
-        array << ['PostalCode', address.zip]
-        array << ['POBoxFlag', address.po_box? ? 'Y' : 'N']
+        location['Country']    = address.country
+        location['PostalCode'] = address.zip
+        location['POBoxFlag']  =  address.po_box? ? 'Y' : 'N'
       end
 
       if address.domestic?
-        array << ['State', address.state]
-        array << ['Zip5', strip_zip(address.zip)]
-        array << ['Zip4', strip_zip4(address.zip)] if strip_zip4(address.zip)
+        location['State'] = address.state
+        location['Zip5']  = strip_zip(address.zip)
+        location['Zip4']  = strip_zip4(address.zip) if strip_zip4(address.zip)
       end
 
-      array << ['Phone', strip_phone(address.phone)]
+      location['Phone'] = strip_phone(address.phone)
 
-      array.each do |key, value|
+      location.each do |key, value|
         xml.public_send(prefix + key, value)
       end
     end
