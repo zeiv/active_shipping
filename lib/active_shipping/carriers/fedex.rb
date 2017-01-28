@@ -137,7 +137,11 @@ module ActiveShipping
     DEFAULT_LABEL_STOCK_TYPE = 'PAPER_7X4.75'
 
     # Available return formats for image data when creating labels
-    LABEL_FORMATS = ['DPL', 'EPL2', 'PDF', 'ZPLII', 'PNG'] 
+    LABEL_FORMATS = %w(DPL EPL2 PDF ZPLII PNG).freeze
+
+    TRANSIENT_TRACK_RESPONSE_CODES = %w(9035 9040 9041 9045 9050 9055 9060 9065 9070 9075 9085 9086 9090).freeze
+
+    UNRECOVERABLE_TRACK_RESPONSE_CODES = %w(9080 9081 9082 9095 9100).freeze
 
     def self.service_name_for_code(service_code)
       SERVICE_TYPES[service_code] || "FedEx #{service_code.titleize.sub(/Fedex /, '')}"
@@ -238,8 +242,8 @@ module ActiveShipping
                 # Reference Numbers
                 reference_numbers = Array(package.options[:reference_numbers])
                 if reference_numbers.size > 0
-                  xml.CustomerReferences do
-                    reference_numbers.each do |reference_number_info|
+                  reference_numbers.each do |reference_number_info|
+                    xml.CustomerReferences do
                       xml.CustomerReferenceType(reference_number_info[:type] || "CUSTOMER_REFERENCE")
                       xml.Value(reference_number_info[:value])
                     end
@@ -586,7 +590,12 @@ module ActiveShipping
       message = response_message(xml)
 
       if success
-        origin = nil
+        tracking_details_root = xml.at('CompletedTrackDetails')
+        success = response_success?(tracking_details_root)
+        message = response_message(tracking_details_root)
+      end
+
+      if success
         delivery_signature = nil
         shipment_events = []
 
@@ -595,51 +604,61 @@ module ActiveShipping
           when 1
             all_tracking_details.first
           when 0
-            raise ActiveShipping::Error, "The response did not contain tracking details"
+            message = "The response did not contain tracking details"
+            return TrackingResponse.new(
+              false,
+              message,
+              Hash.from_xml(response),
+              carrier: @@name,
+              xml: response,
+              request: last_request
+            )
           else
             all_unique_identifiers = xml.root.xpath('CompletedTrackDetails/TrackDetails/TrackingNumberUniqueIdentifier').map(&:text)
-            raise ActiveShipping::Error, "Multiple matches were found. Specify a unqiue identifier: #{all_unique_identifiers.join(', ')}"
+            message = "Multiple matches were found. Specify a unqiue identifier: #{all_unique_identifiers.join(', ')}"
+            return TrackingResponse.new(
+              false,
+              message,
+              Hash.from_xml(response),
+              carrier: @@name,
+              xml: response,
+              request: last_request
+            )
         end
 
-
         first_notification = tracking_details.at('Notification')
-        if first_notification.at('Severity').text == 'ERROR'
-          case first_notification.at('Code').text
-          when '9040'
+        severity = first_notification.at('Severity').text
+        if severity == 'ERROR' || severity == 'FAILURE'
+          message = first_notification.try(:text)
+          code = first_notification.at('Code').try(:text)
+          case code
+          when *TRANSIENT_TRACK_RESPONSE_CODES
             raise ActiveShipping::ShipmentNotFound, first_notification.at('Message').text
           else
-            raise ActiveShipping::ResponseContentError, StandardError.new(first_notification.at('Message').text)
-          end
-        elsif first_notification.at('Severity').text == 'FAILURE'
-          case first_notification.at('Code').text
-          when '9045'
             raise ActiveShipping::ResponseContentError, StandardError.new(first_notification.at('Message').text)
           end
         end
 
         tracking_number = tracking_details.at('TrackingNumber').text
         status_detail = tracking_details.at('StatusDetail')
-        if status_detail.nil?
-          raise ActiveShipping::Error, "Tracking response does not contain status information"
+        if status_detail.blank?
+          status_code, status, status_description, delivery_signature = nil
+        else
+          status_code = status_detail.at('Code').try(:text)
+          status_description = status_detail.at('AncillaryDetails/ReasonDescription').try(:text) || status_detail.at('Description').try(:text)
+
+          status = TRACKING_STATUS_CODES[status_code]
+
+          if status_code == 'DL' && tracking_details.at('AvailableImages').try(:text) == 'SIGNATURE_PROOF_OF_DELIVERY'
+            delivery_signature = tracking_details.at('DeliverySignatureName').try(:text)
+          end
         end
 
-        status_code = status_detail.at('Code').try(:text)
-        if status_code.nil?
-          raise ActiveShipping::Error, "Tracking response does not contain status code"
-        end
-
-        status_description = (status_detail.at('AncillaryDetails/ReasonDescription') || status_detail.at('Description')).text
-        status = TRACKING_STATUS_CODES[status_code]
-
-        if status_code == 'DL' && tracking_details.at('AvailableImages').try(:text) == 'SIGNATURE_PROOF_OF_DELIVERY'
-          delivery_signature = tracking_details.at('DeliverySignatureName').text
-        end
-
-        if origin_node = tracking_details.at('OriginLocationAddress')
-          origin = Location.new(
-                :country =>     origin_node.at('CountryCode').text,
-                :province =>    origin_node.at('StateOrProvinceCode').text,
-                :city =>        origin_node.at('City').text
+        origin = if origin_node = tracking_details.at('OriginLocationAddress')
+          Location.new(
+            country: origin_node.at('CountryCode').text,
+            province: origin_node.at('StateOrProvinceCode').text,
+            city: origin_node.at('City').text
           )
         end
 
@@ -668,26 +687,29 @@ module ActiveShipping
 
           shipment_events << ShipmentEvent.new(description, zoneless_time, location, description, type_code)
         end
-        shipment_events = shipment_events.sort_by(&:time)
 
+        shipment_events = shipment_events.sort_by(&:time)
       end
 
-      TrackingResponse.new(success, message, Hash.from_xml(response),
-                           :carrier => @@name,
-                           :xml => response,
-                           :request => last_request,
-                           :status => status,
-                           :status_code => status_code,
-                           :status_description => status_description,
-                           :ship_time => ship_time,
-                           :scheduled_delivery_date => scheduled_delivery_time,
-                           :actual_delivery_date => actual_delivery_time,
-                           :delivery_signature => delivery_signature,
-                           :shipment_events => shipment_events,
-                           :shipper_address => (shipper_address.nil? || shipper_address.unknown?) ? nil : shipper_address,
-                           :origin => origin,
-                           :destination => destination,
-                           :tracking_number => tracking_number
+      TrackingResponse.new(
+        success,
+        message,
+        Hash.from_xml(response),
+        carrier: @@name,
+        xml: response,
+        request: last_request,
+        status: status,
+        status_code: status_code,
+        status_description: status_description,
+        ship_time: ship_time,
+        scheduled_delivery_date: scheduled_delivery_time,
+        actual_delivery_date: actual_delivery_time,
+        delivery_signature: delivery_signature,
+        shipment_events: shipment_events,
+        shipper_address: (shipper_address.nil? || shipper_address.unknown?) ? nil : shipper_address,
+        origin: origin,
+        destination: destination,
+        tracking_number: tracking_number
       )
     end
 
@@ -702,13 +724,13 @@ module ActiveShipping
     end
 
     def response_success?(document)
-      highest_severity = document.root.at('HighestSeverity')
+      highest_severity = document.at('HighestSeverity')
       return false if highest_severity.nil?
       %w(SUCCESS WARNING NOTE).include?(highest_severity.text)
     end
 
     def response_message(document)
-      notifications = document.root.at('Notifications')
+      notifications = document.at('Notifications')
       return "" if notifications.nil?
 
       "#{notifications.at('Severity').text} - #{notifications.at('Code').text}: #{notifications.at('Message').text}"

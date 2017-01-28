@@ -3,24 +3,19 @@ script: bundle exec rake test
 sudo: false
 
 rvm:
-- "2.0"
-- "2.1"
 - "2.2.2"
 - "2.3.1"
+- "2.4.0"
 
 gemfile:
-- Gemfile.activesupport32
-- Gemfile.activesupport40
-- Gemfile.activesupport41
-- Gemfile.activesupport42
-- Gemfile.activesupport50
+- gemfiles/activesupport42.gemfile
+- gemfiles/activesupport50.gemfile
+- gemfiles/activesupport_master.gemfile
 
 matrix:
   exclude:
-    - rvm: "2.0"
-      gemfile: Gemfile.activesupport50
-    - rvm: "2.1"
-      gemfile: Gemfile.activesupport50
+    - rvm: "2.4.0"
+      gemfile: gemfiles/activesupport42.gemfile
 
 env:
   global:

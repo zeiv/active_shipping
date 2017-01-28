@@ -1,81 +1,5 @@
 module ActiveShipping #:nodoc:
-  # A package item is a unique item(s) that is physically in a package.
-  # A single package can have many items. This is only required
-  # for shipping methods (label creation) right now.
-  class PackageItem
-    include Quantified
-
-    attr_reader :sku, :hs_code, :value, :name, :weight, :quantity, :options
-
-    def initialize(name, grams_or_ounces, value, quantity, options = {})
-      @name = name
-
-      imperial = (options[:units] == :imperial) ||
-                 (grams_or_ounces.respond_to?(:unit) && m.unit.to_sym == :imperial)
-
-      @unit_system = imperial ? :imperial : :metric
-
-      @weight = attribute_from_metric_or_imperial(grams_or_ounces, Mass, :grams, :ounces)
-
-      @value = Package.cents_from(value)
-      @quantity = quantity > 0 ? quantity : 1
-
-      @sku = options[:sku]
-      @hs_code = options[:hs_code]
-      @options = options
-    end
-
-    def weight(options = {})
-      case options[:type]
-      when nil, :actual
-        @weight
-      when :volumetric, :dimensional
-        @volumetric_weight ||= begin
-          m = Mass.new((centimetres(:box_volume) / 6.0), :grams)
-          @unit_system == :imperial ? m.in_ounces : m
-        end
-      when :billable
-        [weight, weight(:type => :volumetric)].max
-      end
-    end
-    alias_method :mass, :weight
-
-    def ounces(options = {})
-      weight(options).in_ounces.amount
-    end
-    alias_method :oz, :ounces
-
-    def grams(options = {})
-      weight(options).in_grams.amount
-    end
-    alias_method :g, :grams
-
-    def pounds(options = {})
-      weight(options).in_pounds.amount
-    end
-    alias_method :lb, :pounds
-    alias_method :lbs, :pounds
-
-    def kilograms(options = {})
-      weight(options).in_kilograms.amount
-    end
-    alias_method :kg, :kilograms
-    alias_method :kgs, :kilograms
-
-    private
-
-    def attribute_from_metric_or_imperial(obj, klass, metric_unit, imperial_unit)
-      if obj.is_a?(klass)
-        return value
-      else
-        return klass.new(obj, (@unit_system == :imperial ? imperial_unit : metric_unit))
-      end
-    end
-  end
-
   class Package
-    include Quantified
-
     cattr_accessor :default_options
     attr_reader :options, :value, :currency, :dimensions
 
@@ -107,10 +31,11 @@ module ActiveShipping #:nodoc:
       @weight_unit_system = weight_imperial ? :imperial : :metric
       @dimensions_unit_system = dimensions_imperial ? :imperial : :metric
 
-      @weight = attribute_from_metric_or_imperial(grams_or_ounces, Mass, @weight_unit_system, :grams, :ounces)
+      @weight = attribute_from_metric_or_imperial(grams_or_ounces, Measured::Weight, @weight_unit_system, :grams, :ounces)
 
       if @dimensions.blank?
-        @dimensions = [Length.new(0, (dimensions_imperial ? :inches : :centimetres))] * 3
+        zero_length = Measured::Length.new(0, (dimensions_imperial ? :inches : :centimetres))
+        @dimensions = [zero_length] * 3
       else
         process_dimensions
       end
@@ -136,38 +61,40 @@ module ActiveShipping #:nodoc:
     end
     alias_method :tube?, :cylinder?
 
-    def gift?; @gift end
+    def gift?
+      @gift
+    end
 
     def ounces(options = {})
-      weight(options).in_ounces.amount
+      weight(options).convert_to(:oz).value
     end
     alias_method :oz, :ounces
 
     def grams(options = {})
-      weight(options).in_grams.amount
+      weight(options).convert_to(:g).value
     end
     alias_method :g, :grams
 
     def pounds(options = {})
-      weight(options).in_pounds.amount
+      weight(options).convert_to(:lb).value
     end
     alias_method :lb, :pounds
     alias_method :lbs, :pounds
 
     def kilograms(options = {})
-      weight(options).in_kilograms.amount
+      weight(options).convert_to(:kg).value
     end
     alias_method :kg, :kilograms
     alias_method :kgs, :kilograms
 
     def inches(measurement = nil)
-      @inches ||= @dimensions.map { |m| m.in_inches.amount }
+      @inches ||= @dimensions.map { |m| m.convert_to(:in).value }
       measurement.nil? ? @inches : measure(measurement, @inches)
     end
     alias_method :in, :inches
 
     def centimetres(measurement = nil)
-      @centimetres ||= @dimensions.map { |m| m.in_centimetres.amount }
+      @centimetres ||= @dimensions.map { |m| m.convert_to(:cm).value }
       measurement.nil? ? @centimetres : measure(measurement, @centimetres)
     end
     alias_method :cm, :centimetres
@@ -178,8 +105,8 @@ module ActiveShipping #:nodoc:
         @weight
       when :volumetric, :dimensional
         @volumetric_weight ||= begin
-          m = Mass.new((centimetres(:box_volume) / 6.0), :grams)
-          @weight_unit_system == :imperial ? m.in_ounces : m
+          m = Measured::Weight.new((centimetres(:box_volume) / 6.0), :grams)
+          @weight_unit_system == :imperial ? m.convert_to(:oz) : m
         end
       when :billable
         [weight, weight(:type => :volumetric)].max
@@ -215,7 +142,7 @@ module ActiveShipping #:nodoc:
 
     def measure(measurement, ary)
       case measurement
-      when Fixnum then ary[measurement]
+      when Integer then ary[measurement]
       when :x, :max, :length, :long then ary[2]
       when :y, :mid, :width, :wide then ary[1]
       when :z, :min, :height, :depth, :high, :deep then ary[0]
@@ -228,7 +155,7 @@ module ActiveShipping #:nodoc:
 
     def process_dimensions
       @dimensions = @dimensions.map do |l|
-        attribute_from_metric_or_imperial(l, Length, @dimensions_unit_system, :centimetres, :inches)
+        attribute_from_metric_or_imperial(l, Measured::Length, @dimensions_unit_system, :centimetres, :inches)
       end.sort
       # [1,2] => [1,1,2]
       # [5] => [5,5,5]

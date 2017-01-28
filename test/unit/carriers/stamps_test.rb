@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class StampsTest < Minitest::Test
+class StampsTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Fixtures
 
   def setup
@@ -68,7 +68,7 @@ class StampsTest < Minitest::Test
     assert_equal 'ActiveShipping::StampsPurchasePostageResponse', purchase_status.class.name
 
     assert_equal 'Success', purchase_status.purchase_status
-    assert_equal nil, purchase_status.transaction_id
+    assert_nil purchase_status.transaction_id
   end
 
   def test_validate_address

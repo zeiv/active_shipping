@@ -1,8 +1,9 @@
 require 'test_helper'
 
-class RemoteUPSTest < Minitest::Test
+class RemoteUPSTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Credentials
   include ActiveShipping::Test::Fixtures
+  include HolidayHelpers
 
   def setup
     @options = credentials(:ups).merge(:test => true)
@@ -79,12 +80,12 @@ class RemoteUPSTest < Minitest::Test
     assert_equal 'UPS', rate.carrier
     assert_equal 'CAD', rate.currency
     if @options[:origin_account]
-      assert_instance_of Fixnum, rate.negotiated_rate
+      assert_kind_of Integer, rate.negotiated_rate
     else
       assert_equal rate.negotiated_rate, 0
     end
-    assert_instance_of Fixnum, rate.total_price
-    assert_instance_of Fixnum, rate.price
+    assert_kind_of Integer, rate.total_price
+    assert_kind_of Integer, rate.price
     assert_instance_of String, rate.service_name
     assert_instance_of String, rate.service_code
     assert_instance_of Array, rate.package_rates
@@ -312,7 +313,7 @@ class RemoteUPSTest < Minitest::Test
     assert response.success?
     refute_empty response.delivery_estimates
     ground_delivery_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Ground"}.first
-    assert_equal 1.business_days.after(today), ground_delivery_estimate.date
+    with_holidays(:ups) { assert_equal 1.business_days.after(today), ground_delivery_estimate.date }
   end
 
   def test_delivery_date_estimates_within_zip_with_no_value
@@ -331,7 +332,7 @@ class RemoteUPSTest < Minitest::Test
     assert response.success?
     refute_empty response.delivery_estimates
     ground_delivery_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Ground"}.first
-    assert_equal 1.business_days.after(today), ground_delivery_estimate.date
+    with_holidays(:ups) { assert_equal 1.business_days.after(today), ground_delivery_estimate.date }
   end
 
   def test_delivery_date_estimates_across_zips
@@ -350,9 +351,11 @@ class RemoteUPSTest < Minitest::Test
     assert response.success?
     refute_empty response.delivery_estimates
     ground_delivery_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Ground"}.first
-    assert_equal 3.business_days.after(today), ground_delivery_estimate.date
-    next_day_delivery_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Next Day Air"}.first
-    assert_equal 1.business_days.after(today), next_day_delivery_estimate.date
+    with_holidays(:ups) do
+      assert_equal 3.business_days.after(today), ground_delivery_estimate.date
+      next_day_delivery_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Next Day Air"}.first
+      assert_equal 1.business_days.after(today), next_day_delivery_estimate.date
+    end
   end
 
   def test_rate_with_single_service
@@ -373,6 +376,7 @@ class RemoteUPSTest < Minitest::Test
 
   def test_delivery_date_estimates_intl
     today = Date.current
+
     response = @carrier.get_delivery_date_estimates(
       location_fixtures[:new_york_with_name],
       location_fixtures[:ottawa_with_name],
@@ -386,7 +390,7 @@ class RemoteUPSTest < Minitest::Test
     assert response.success?
     refute_empty response.delivery_estimates
     ww_express_estimate = response.delivery_estimates.select {|de| de.service_name == "UPS Worldwide Express"}.first
-    assert_equal Date.parse(1.day.from_now.to_s), ww_express_estimate.date
+    with_holidays(:ups) { assert_equal 1.business_days.after(today), ww_express_estimate.date }
   end
 
   def test_void_shipment

@@ -1,5 +1,3 @@
-# -*- encoding: utf-8 -*-
-
 module ActiveShipping
   class UPS < Carrier
     self.retry_safe = true
@@ -257,6 +255,25 @@ module ActiveShipping
       xml_builder.to_xml
     end
 
+    # Builds an XML node to request UPS shipping rates for the given packages
+    #
+    # @param origin [ActiveShipping::Location] Where the shipment will originate from
+    # @param destination [ActiveShipping::Location] Where the package will go
+    # @param packages [Array<ActiveShipping::Package>] The list of packages that will
+    #   be in the shipment
+    # @options options [Hash] rate-specific options
+    # @return [ActiveShipping::RateResponse] The response from the UPS, which
+    #   includes 0 or more rate estimates for different shipping products
+    #
+    # options:
+    # * service: name of the service
+    # * pickup_type: symbol for PICKUP_CODES
+    # * customer_classification: symbol for CUSTOMER_CLASSIFICATIONS
+    # * shipper: who is sending the package and where it should be returned
+    #     if it is undeliverable.
+    # * imperial: if truthy, measurements will use the metric system
+    # * negotiated_rates: if truthy, negotiated rates will be requested from
+    #     UPS. Only valid if shipper account has negotiated rates.
     def build_rate_request(origin, destination, packages, options = {})
       xml_builder = Nokogiri::XML::Builder.new do |xml|
         xml.RatingServiceSelectionRequest do
@@ -784,6 +801,7 @@ module ActiveShipping
           service_code = rated_shipment.at('Service/Code').text
           days_to_delivery = rated_shipment.at('GuaranteedDaysToDelivery').text.to_i
           days_to_delivery = nil if days_to_delivery == 0
+          warning_messages = rate_warning_messages(rated_shipment)
           RateEstimate.new(origin, destination, @@name, service_name_for(origin, service_code),
               :total_price => rated_shipment.at('TotalCharges/MonetaryValue').text.to_f,
               :insurance_price => rated_shipment.at('ServiceOptionsCharges/MonetaryValue').text.to_f,
@@ -791,7 +809,8 @@ module ActiveShipping
               :service_code => service_code,
               :packages => packages,
               :delivery_range => [timestamp_from_business_day(days_to_delivery)],
-              :negotiated_rate => rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/MonetaryValue').try(:text).to_f
+              :negotiated_rate => rated_shipment.at('NegotiatedRates/NetSummaryCharges/GrandTotal/MonetaryValue').try(:text).to_f,
+              :messages => warning_messages
           )
         end
       end
@@ -816,16 +835,18 @@ module ActiveShipping
         # Build status hash
         status_nodes = first_package.css('Activity > Status > StatusType')
 
-        # Prefer a delivery node
-        status_node = status_nodes.detect { |x| x.at('Code').text == 'D' }
-        status_node ||= status_nodes.first
+        if status_nodes.present?
+          # Prefer a delivery node
+          status_node = status_nodes.detect { |x| x.at('Code').text == 'D' }
+          status_node ||= status_nodes.first
 
-        status_code = status_node.at('Code').text
-        status_description = status_node.at('Description').text
-        status = TRACKING_STATUS_CODES[status_code]
+          status_code = status_node.at('Code').try(:text)
+          status_description = status_node.at('Description').try(:text)
+          status = TRACKING_STATUS_CODES[status_code]
 
-        if status_description =~ /out.*delivery/i
-          status = :out_for_delivery
+          if status_description =~ /out.*delivery/i
+            status = :out_for_delivery
+          end
         end
 
         origin, destination = %w(Shipper ShipTo).map do |location|
@@ -848,8 +869,8 @@ module ActiveShipping
         activities = first_package.css('> Activity')
         unless activities.empty?
           shipment_events = activities.map do |activity|
-            description = activity.at('Status/StatusType/Description').text
-            type_code = activity.at('Status/StatusType/Code').text
+            description = activity.at('Status/StatusType/Description').try(:text)
+            type_code = activity.at('Status/StatusType/Code').try(:text)
             zoneless_time = parse_ups_datetime(:time => activity.at('Time'), :date => activity.at('Date'))
             location = location_from_address_node(activity.at('ActivityLocation/Address'))
             ShipmentEvent.new(description, zoneless_time, location, description, type_code)
@@ -977,6 +998,10 @@ module ActiveShipping
       [status, desc].select(&:present?).join(": ").presence || "UPS could not process the request."
     end
 
+    def rate_warning_messages(rate_xml)
+      rate_xml.xpath("RatedShipmentWarning").map { |warning| warning.text }
+    end
+
     def response_digest(xml)
       xml.root.at('ShipmentDigest').text
     end
@@ -1001,7 +1026,8 @@ module ActiveShipping
     end
 
     def commit(action, request, test = false)
-      ssl_post("#{test ? TEST_URL : LIVE_URL}/#{RESOURCES[action]}", request)
+      response = ssl_post("#{test ? TEST_URL : LIVE_URL}/#{RESOURCES[action]}", request)
+      response.encode('utf-8', 'iso-8859-1')
     end
 
     def within_same_area?(origin, location)

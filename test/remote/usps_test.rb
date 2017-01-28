@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class RemoteUSPSTest < Minitest::Test
+class RemoteUSPSTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Credentials
   include ActiveShipping::Test::Fixtures
 
@@ -76,8 +76,8 @@ class RemoteUSPSTest < Minitest::Test
     rate = response.rates.first
     assert_equal 'USPS', rate.carrier
     assert_equal 'USD', rate.currency
-    assert_instance_of Fixnum, rate.total_price
-    assert_instance_of Fixnum, rate.price
+    assert_kind_of Integer, rate.total_price
+    assert_kind_of Integer, rate.price
     assert_instance_of String, rate.service_name
     assert_instance_of String, rate.service_code
     assert_instance_of Array, rate.package_rates
@@ -109,8 +109,8 @@ class RemoteUSPSTest < Minitest::Test
     rate = response.rates.first
     assert_equal 'USPS', rate.carrier
     assert_equal 'USD', rate.currency
-    assert_instance_of Fixnum, rate.total_price
-    assert_instance_of Fixnum, rate.price
+    assert_kind_of Integer, rate.total_price
+    assert_kind_of Integer, rate.price
     assert_instance_of String, rate.service_name
     assert_instance_of String, rate.service_code
     assert_instance_of Array, rate.package_rates

@@ -1,5 +1,3 @@
-require 'active_support/core_ext/object/to_query'
-
 module ActiveShipping
   class AustraliaPost < Carrier
     cattr_reader :name
@@ -154,7 +152,7 @@ module ActiveShipping
           length:        @package.cm(:length),
           width:         @package.cm(:width),
           height:        @package.cm(:height),
-          weight:        @package.weight.in_kg.to_f.round(2),
+          weight:        @package.kilograms.to_f.round(2),
           from_postcode: @origin.postal_code,
           to_postcode:   @destination.postal_code
         }
@@ -162,7 +160,7 @@ module ActiveShipping
 
       def international_params
         {
-          weight:       @package.weight.in_kg.to_f.round(2),
+          weight:       @package.kilograms.to_f.round(2),
           country_code: @destination.country_code
         }
       end

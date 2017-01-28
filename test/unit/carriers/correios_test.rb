@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
 require "test_helper"
 
-class CorreiosTest < Minitest::Test
+class CorreiosTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Fixtures
 
   def setup

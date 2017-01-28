@@ -1,9 +1,7 @@
-# encoding: utf-8
-
 require 'test_helper'
 
 # All remote tests require Canada Post development environment credentials
-class RemoteCanadaPostPWSPlatformTest < Minitest::Test
+class RemoteCanadaPostPWSPlatformTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Credentials
   include ActiveShipping::Test::Fixtures
 

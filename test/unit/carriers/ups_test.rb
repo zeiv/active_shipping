@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class UPSTest < Minitest::Test
+class UPSTest < ActiveSupport::TestCase
   include ActiveShipping::Test::Fixtures
 
   def setup
@@ -166,6 +166,13 @@ class UPSTest < Minitest::Test
     assert_equal Time.parse('2015-01-29 00:00:00 UTC'), response.scheduled_delivery_date
   end
 
+  def test_find_tracking_info_should_handle_no_status_node
+    @carrier.expects(:commit).returns(xml_fixture('ups/no_status_node_success'))
+    response = @carrier.find_tracking_info('1Z5FX0076803466397')
+    assert_equal 'Success', response.params.fetch("Response").fetch("ResponseStatusDescription")
+    assert_empty response.shipment_events
+  end
+
   def test_response_parsing_an_oversize_package
     mock_response = xml_fixture('ups/package_exceeds_maximum_length')
     @carrier.expects(:commit).returns(mock_response)
@@ -177,6 +184,38 @@ class UPSTest < Minitest::Test
     end
 
     assert_equal "Failure: Package exceeds the maximum length constraint of 108 inches. Length is the longest side of a package.", e.message
+  end
+
+  def test_handles_no_shipment_warning_messages
+    mock_response = xml_fixture('ups/no_shipment_warnings')
+    @carrier.expects(:commit).returns(mock_response)
+    response = @carrier.find_rates(location_fixtures[:beverly_hills],
+                        location_fixtures[:real_home_as_residential],
+                        package_fixtures.values_at(:chocolate_stuff))
+    rate = response.rates.first
+    assert_equal [], rate.messages
+  end
+
+  def test_handles_warning_messages
+    mock_response = xml_fixture('ups/no_negotiated_rates')
+    @carrier.expects(:commit).returns(mock_response)
+    response = @carrier.find_rates(location_fixtures[:beverly_hills],
+                        location_fixtures[:real_home_as_residential],
+                        package_fixtures.values_at(:chocolate_stuff))
+    rate = response.rates.first
+    expected_messages = [
+      "User Id and Shipper Number combination is not qualified to receive negotiated rates.",
+      "Your invoice may vary from the displayed reference rates",
+      "Ship To Address Classification is changed from Residential to Commercial"
+    ]
+    assert_equal expected_messages, rate.messages
+  end
+
+  def test_response_parsing_an_undecoded_character
+    unencoded_response = @tracking_response.gsub('NAPERVILLE', "N\xc4PERVILLE")
+    @carrier.stubs(:ssl_post).returns(unencoded_response)
+    response = @carrier.find_tracking_info('1Z5FX0076803466397')
+    assert_equal 'NÄPERVILLE', response.shipment_events.first.location.city
   end
 
   def test_response_parsing_an_unknown_error

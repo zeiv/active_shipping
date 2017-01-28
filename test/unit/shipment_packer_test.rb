@@ -1,6 +1,6 @@
 require 'test_helper'
 
-class ShipmentPackerTest < Minitest::Test
+class ShipmentPackerTest < ActiveSupport::TestCase
   def setup
     @dimensions = [5.1, 15.2, 30.5]
   end
@@ -12,7 +12,7 @@ class ShipmentPackerTest < Minitest::Test
     assert_equal 1, packages.size
 
     package = packages.first
-    assert_equal 1, package.weight
+    assert_equal Measured::Weight(1, :g), package.weight
   end
 
   def test_divide_order_with_multiple_lines_into_a_single_package
@@ -22,7 +22,7 @@ class ShipmentPackerTest < Minitest::Test
     assert_equal 1, packages.size
 
     package = packages.first
-    assert_equal 2, package.weight
+    assert_equal Measured::Weight(2, :g), package.weight
   end
 
   def test_divide_order_with_single_line_into_two_packages
@@ -32,7 +32,7 @@ class ShipmentPackerTest < Minitest::Test
     assert_equal 2, packages.size
 
     packages.each do |package|
-      assert_equal 1, package.weight
+      assert_equal Measured::Weight(1, :g), package.weight
     end
   end
 
@@ -46,7 +46,7 @@ class ShipmentPackerTest < Minitest::Test
     assert_equal 2, packages.size
 
     packages.each do |package|
-      assert_equal 1, package.weight
+      assert_equal Measured::Weight(1, :g), package.weight
     end
   end
 
@@ -60,8 +60,8 @@ class ShipmentPackerTest < Minitest::Test
     packages = ShipmentPacker.pack(items, @dimensions, 2, 'USD')
     assert_equal 2, packages.size
 
-    assert_equal 2, packages[0].weight
-    assert_equal 1, packages[1].weight
+    assert_equal Measured::Weight(2, :g), packages[0].weight
+    assert_equal Measured::Weight(1, :g), packages[1].weight
   end
 
   def test_raise_overweight_exception_when_a_single_item_exceeds_the_maximum_weight_of_a_package
@@ -118,7 +118,7 @@ class ShipmentPackerTest < Minitest::Test
       assert_equal 1, packages.size
 
       package = packages.first
-      assert_equal 1, package.weight
+      assert_equal Measured::Weight(1, :g), package.weight
       assert_equal 100, package.value
     end
   end
@@ -129,7 +129,7 @@ class ShipmentPackerTest < Minitest::Test
     packages = ShipmentPacker.pack(items, @dimensions, 1, 'USD')
 
     package = packages.first
-    assert_equal 1, package.weight
+    assert_equal Measured::Weight(1, :g), package.weight
     assert_equal 100, package.value
   end
 
