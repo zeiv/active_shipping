@@ -125,7 +125,7 @@ class RemoteUSPSTest < ActiveSupport::TestCase
     assert_equal [], other_than_two, "Some RateEstimates do not refer to the right number of packages (#{other_than_two.inspect})"
   end
 
-  def test_domestic_label_from_name_errros
+  def test_domestic_label_from_name_errors
     assert_raises(ResponseError, "From Name is required and may not exceed 100 characters.") do
       @carrier.create_shipment(
         location_fixtures[:new_york],
