@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <DelivConfirmCertifyV4.0Response>
-  <DeliveryConfirmationNumber><DELIVERY CONFIRMATION NUMBER></DeliveryConfirmationNumber>
-  <DeliveryConfirmationLabel><LABEL IMAGE REDACTED DUE TO SIZE></DeliveryConfirmationLabel>
+  <DeliveryConfirmationNumber>DELIVERY CONFIRMATION NUMBER</DeliveryConfirmationNumber>
+  <DeliveryConfirmationLabel>LABEL IMAGE REDACTED DUE TO SIZE</DeliveryConfirmationLabel>
   <ToName>JP SILVASHY</ToName>
   <ToFirm/>
   <ToAddress1/>

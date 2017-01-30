@@ -686,7 +686,7 @@ class USPSTest < ActiveSupport::TestCase
     assert_instance_of Array, response.labels
     refute response.labels.empty?
 
-    assert_equal "420902109400101699320000720205",
+    assert_equal "DELIVERY CONFIRMATION NUMBER",
       response.labels.first.tracking_number
     assert_equal 1, response.labels.count
     refute response.labels.first.img_data.empty?
@@ -711,7 +711,7 @@ class USPSTest < ActiveSupport::TestCase
     assert_instance_of Array, response.labels
     refute response.labels.empty?
 
-    assert_equal "EC505942340US", response.labels.first.tracking_number
+    assert_equal "BARCODE NUMBER", response.labels.first.tracking_number
     assert_equal 2, response.labels.count
     refute response.labels.first.img_data.empty?
     refute response.labels.last.img_data.empty?

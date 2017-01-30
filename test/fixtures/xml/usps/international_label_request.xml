@@ -27,19 +27,20 @@
       <Description>Item delivery</Description>
       <Quantity>1</Quantity>
       <Value>26999</Value>
-      <NetPounds>7</NetPounds>
+      <NetPounds>0</NetPounds>
       <NetOunces>120.0</NetOunces>
       <HSTariffNumber>0</HSTariffNumber>
       <CountryOfOrigin>United States</CountryOfOrigin>
     </ItemDetail>
   </ShippingContents>
-  <GrossPounds>7</GrossPounds>
+  <GrossPounds>0</GrossPounds>
   <GrossOunces>120</GrossOunces>
   <ContentType>MERCHANDISE</ContentType>
   <Agreement>Y</Agreement>
   <ImageType>PDF</ImageType>
   <Size>LARGE</Size>
-  <Length>4.5</Length>
-  <Width>10.0</Width>
-  <Height>15.0</Height>
+  <Length>15.00</Length>
+  <Width>10.00</Width>
+  <Height>4.50</Height>
+  <Girth>29.00</Girth>
 </ExpressMailIntlCertifyRequest>
