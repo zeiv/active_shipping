@@ -21,26 +21,26 @@
   <ToPostalCode>K1P 1J1</ToPostalCode>
   <ToPOBoxFlag>N</ToPOBoxFlag>
   <ToPhone>6135802400</ToPhone>
-  <Container>RECTANGULAR</Container>
+  <Container/>
   <ShippingContents>
     <ItemDetail>
-      <Description>Item delivery</Description>
+      <Description>brand new Wii</Description>
       <Quantity>1</Quantity>
-      <Value>26999</Value>
+      <Value>10000</Value>
       <NetPounds>0</NetPounds>
-      <NetOunces>120.0</NetOunces>
-      <HSTariffNumber>0</HSTariffNumber>
-      <CountryOfOrigin>United States</CountryOfOrigin>
+      <NetOunces>64.0</NetOunces>
+      <HSTariffNumber>123456789012</HSTariffNumber>
+      <CountryOfOrigin>China</CountryOfOrigin>
     </ItemDetail>
   </ShippingContents>
   <GrossPounds>0</GrossPounds>
-  <GrossOunces>120</GrossOunces>
+  <GrossOunces>64</GrossOunces>
   <ContentType>MERCHANDISE</ContentType>
   <Agreement>Y</Agreement>
   <ImageType>PDF</ImageType>
-  <Size>LARGE</Size>
-  <Length>15.00</Length>
-  <Width>10.00</Width>
-  <Height>4.50</Height>
-  <Girth>29.00</Girth>
+  <Size>REGULAR</Size>
+  <Length>8.00</Length>
+  <Width>6.00</Width>
+  <Height>4.00</Height>
+  <Girth>20.00</Girth>
 </ExpressMailIntlCertifyRequest>

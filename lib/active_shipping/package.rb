@@ -1,7 +1,7 @@
 module ActiveShipping #:nodoc:
   class Package
     cattr_accessor :default_options
-    attr_reader :options, :value, :currency, :dimensions
+    attr_reader :options, :value, :currency, :dimensions, :package_items
 
     # Package.new(100, [10, 20, 30], :units => :metric)
     # Package.new(Mass.new(100, :grams), [10, 20, 30].map {|m| Length.new(m, :centimetres)})
@@ -46,6 +46,7 @@ module ActiveShipping #:nodoc:
       @gift = options[:gift] ? true : false
       @oversized = options[:oversized] ? true : false
       @unpackaged = options[:unpackaged] ? true : false
+      @package_items = options[:package_items]
     end
 
     def unpackaged?

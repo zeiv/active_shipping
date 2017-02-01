@@ -8,6 +8,9 @@ module ActiveShipping
   # This will send a test request to the USPS test servers, which they ask you
   # to do before they put your API key in production mode.
   class USPS < Carrier
+    class NoPackageItemsError < StandardError; end
+    class PackageItemError < StandardError; end
+
     EventDetails = Struct.new(:description, :time, :zoneless_time, :location, :event_code)
     ONLY_PREFIX_EVENTS = ['DELIVERED','OUT FOR DELIVERY']
     self.retry_safe = true
@@ -465,14 +468,39 @@ module ActiveShipping
           xml.Container(container)
 
           xml.ShippingContents do |xml|
-            xml.ItemDetail do |xml|
-              xml.Description("Item delivery")
-              xml.Quantity(1)
-              xml.Value(package.value)
-              xml.NetPounds(0)
-              xml.NetOunces("%0.1f" % [package.ounces, 1].max)
-              xml.HSTariffNumber(0)
-              xml.CountryOfOrigin('United States')
+            raise NoPackageItemsError.new("package items are needed for shipping contents info") if package.package_items.blank?
+
+            package.package_items.each do |item|
+              xml.ItemDetail do |xml|
+                if item.description.blank?
+                  raise PackageItemError.new("package must have a description")
+                else
+                  xml.Description(item.description)
+                end
+
+                xml.Quantity(1)
+
+                if item.value.blank?
+                  raise PackageItemError.new("package must have a value")
+                else
+                  xml.Value(item.value)
+                end
+
+                xml.NetPounds(0)
+                xml.NetOunces("%0.1f" % [package.ounces, 1].max)
+
+                if item.hs_code.blank?
+                  raise PackageItemError.new("package must have a HS Tariff Number")
+                else
+                  xml.HSTariffNumber(item.hs_code)
+                end
+
+                if item.country_of_origin.blank?
+                  raise PackageItemError.new("package must have a HS Tariff Number")
+                else
+                  xml.CountryOfOrigin(item.country_of_origin)
+                end
+              end
             end
           end
 

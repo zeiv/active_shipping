@@ -1,6 +1,8 @@
 module ActiveShipping #:nodoc:
   class PackageItem
-    attr_reader :sku, :hs_code, :value, :name, :weight, :quantity, :options
+    attr_reader :sku, :hs_code, :value, :name,
+      :weight, :quantity, :options, :description,
+      :country_of_origin
 
     def initialize(name, grams_or_ounces, value, quantity, options = {})
       @name = name
@@ -17,6 +19,8 @@ module ActiveShipping #:nodoc:
 
       @sku = options[:sku]
       @hs_code = options[:hs_code]
+      @description = options[:description]
+      @country_of_origin = options[:country_of_origin] || "US"
       @options = options
     end
 

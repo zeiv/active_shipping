@@ -170,7 +170,7 @@ class RemoteUSPSTest < ActiveSupport::TestCase
     response = @carrier.create_shipment(
       location_fixtures[:beverly_hills_with_name],
       location_fixtures[:ottawa_with_name],
-      package_fixtures.values_at(:wii),
+      package_fixtures.values_at(:international),
       :service => :first_class,
       :test => true
     )
@@ -180,16 +180,18 @@ class RemoteUSPSTest < ActiveSupport::TestCase
     assert_instance_of ActiveShipping::LabelResponse, response
   end
 
-  def test_international_label_without_value_raises_errors
-    assert_raises(ResponseError, "Each Shipping item must have description, quantity, and value.") do
+  def test_international_label_without_package_items_raises_errors
+    exception = assert_raises(ActiveShipping::USPS::NoPackageItemsError) do
       @carrier.create_shipment(
         location_fixtures[:beverly_hills_with_name],
         location_fixtures[:ottawa_with_name],
-        package_fixtures.values_at(:book), # book doesn't have a value
+        package_fixtures.values_at(:international_without_package_item),
         :service => :first_class,
         :test => true
       )
-    end
+    end 
+    assert_equal "package items are needed for shipping contents info", 
+      exception.message
   end
 
   def test_us_to_us_possession

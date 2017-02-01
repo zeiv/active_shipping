@@ -102,7 +102,19 @@ module ActiveShipping::Test
         :tshirts => Package.new(10 * 16, nil, :units => :imperial),
         :shipping_container => Package.new(2200000, [2440, 2600, 6058], :description => '20 ft Standard Container', :units => :metric),
         :largest_gold_bar => Package.new(250000, [45.5, 22.5, 17], :value => 15300000),
-        :books => Package.new(64, [4, 8, 6], :units => :imperial, :value => 15300000, :description => 'Books')
+        :books => Package.new(64, [4, 8, 6], :units => :imperial, :value => 15300000, :description => 'Books'),
+        :international => Package.new(64, [4, 8, 6], :units => :imperial, :value => 10,
+                                      :package_items => [package_item_fixtures[:wii]]),
+        :international_without_package_item => Package.new(64, [4, 8, 6], :units => :imperial),
+      }
+    end
+
+    def package_item_fixtures
+      @package_item_fixtures ||= {
+        :wii => PackageItem.new('wii', 64, 10000, 1,
+                                description: "brand new Wii",
+                                country_of_origin: "China",
+                                hs_code:  "123456789012"),
       }
     end
 

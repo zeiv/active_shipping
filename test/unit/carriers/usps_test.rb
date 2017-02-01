@@ -700,7 +700,7 @@ class USPSTest < ActiveSupport::TestCase
     response = @carrier.create_shipment(
       location_fixtures[:beverly_hills_with_name],
       location_fixtures[:ottawa_with_name],
-      package_fixtures.values_at(:wii),
+      package_fixtures.values_at(:international),
       :service => :first_class,
       :test => true
     )
