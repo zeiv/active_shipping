@@ -478,7 +478,7 @@ module ActiveShipping
                   xml.Description(item.description)
                 end
 
-                xml.Quantity(1)
+                xml.Quantity(item.quantity)
 
                 if item.value.blank?
                   raise PackageItemError.new("package must have a value")
