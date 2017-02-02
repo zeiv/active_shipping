@@ -487,7 +487,7 @@ module ActiveShipping
                 end
 
                 xml.NetPounds(0)
-                xml.NetOunces("%0.1f" % [package.ounces, 1].max)
+                xml.NetOunces("%0.1f" % [package.ounces, 0].max)
 
                 if item.hs_code.blank?
                   raise PackageItemError.new("package must have a HS Tariff Number")
