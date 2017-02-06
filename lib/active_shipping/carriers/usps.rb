@@ -496,7 +496,7 @@ module ActiveShipping
                 end
 
                 if item.country_of_origin.blank?
-                  raise PackageItemError.new("package must have a HS Tariff Number")
+                  raise PackageItemError.new("package must have a country of origin")
                 else
                   xml.CountryOfOrigin(item.country_of_origin)
                 end
